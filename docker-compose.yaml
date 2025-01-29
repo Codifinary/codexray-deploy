@@ -1,22 +1,22 @@
 version: "3.8"
 
-name: coroot
+name: codexray
 
 volumes:
   prometheus_data: {}
   clickhouse_data: {}
   clickhouse_logs: {}
-  coroot_data: {}
+  codexray_data: {}
   node_agent_data: {}
   cluster_agent_data: {}
 
 services:
-  coroot:
+  codexray:
     restart: always
-    image: ghcr.io/coroot/coroot
+    image: ghcr.io/codifinary/codexray
     pull_policy: always
     volumes:
-      - coroot_data:/data
+      - codexray_data:/data
     ports:
       - 8080:8080
     command:
@@ -30,7 +30,7 @@ services:
 
   node-agent:
     restart: always
-    image: ghcr.io/coroot/coroot-node-agent
+    image: ghcr.io/codifinary/codexray-node-agent
     pull_policy: always
     privileged: true
     pid: "host"
@@ -40,22 +40,22 @@ services:
       - /sys/fs/cgroup:/host/sys/fs/cgroup
       - node_agent_data:/data
     command:
-      - "--collector-endpoint=http://coroot:8080"
+      - "--collector-endpoint=http://codexray:8080"
       - "--cgroupfs-root=/host/sys/fs/cgroup"
       - "--wal-dir=/data"
 
   cluster-agent:
     restart: always
-    image: ghcr.io/coroot/coroot-cluster-agent
+    image: ghcr.io/codifinary/codexray-cluster-agent
     pull_policy: always
     volumes:
       - cluster_agent_data:/data
     command:
-      - "--coroot-url=http://coroot:8080"
+      - "--codexray-url=http://codexray:8080"
       - "--metrics-scrape-interval=15s"
       - "--metrics-wal-dir=/data"
     depends_on:
-      - coroot
+      - codexray
 
   prometheus:
     restart: always
