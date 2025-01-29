@@ -1,7 +1,5 @@
 version: "3.8"
 
-name: codexray
-
 volumes:
   prometheus_data: {}
   clickhouse_data: {}
