@@ -49,7 +49,7 @@ services:
     volumes:
       - cluster_agent_data:/data
     command:
-      - "--codexray-url=http://codexray:8080"
+      - "--coroot-url=http://codexray:8080"
       - "--metrics-scrape-interval=15s"
       - "--metrics-wal-dir=/data"
     depends_on:
