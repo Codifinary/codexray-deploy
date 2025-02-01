@@ -1,3 +1,7 @@
+# git install
+    sudo apt install git
+
+
 # Github ssh key add
 
 
