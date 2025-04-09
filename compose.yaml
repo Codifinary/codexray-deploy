@@ -28,7 +28,7 @@ services:
 
   node-agent:
     restart: always
-    image: ghcr.io/codifinary/codexray-node-agent:latest
+    image: ghcr.io/coroot/coroot-node-agent:latest
     pull_policy: always
     privileged: true
     pid: "host"
