@@ -28,7 +28,7 @@ services:
 
   node-agent:
     restart: always
-    image: ghcr.io/coroot/coroot-node-agent:1.23.15@sha256:c3b3e237bcc3ab6a101941578d3d01866d43a65b35a14a4105f8923ed91ebf1c:latest
+    image: ghcr.io/coroot/coroot-node-agent:1.23.15@sha256:c3b3e237bcc3ab6a101941578d3d01866d43a65b35a14a4105f8923ed91ebf1c
     pull_policy: always
     privileged: true
     pid: "host"
