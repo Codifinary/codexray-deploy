@@ -43,3 +43,6 @@
 
 ###  Apply executable permissions:
     sudo chmod +x /usr/local/bin/docker-compose
+
+### Setup docker login for Github 
+    docker login ghcr.io -u <access username or email> -p <PAT>
