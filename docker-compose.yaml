@@ -75,6 +75,10 @@ services:
   clickhouse:
     restart: always
     image: clickhouse/clickhouse-server:24.3
+      environment:
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=vizares
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - clickhouse_logs:/var/log/clickhouse-server
