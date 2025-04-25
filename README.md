@@ -46,3 +46,6 @@
 
 ### Setup docker login for Github 
     docker login ghcr.io -u <access username or email> -p <PAT>
+
+### Start the docker-compose
+    docker-compose up -d
