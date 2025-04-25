@@ -17,7 +17,7 @@
 ### copy ssh key 
     cat ~/.ssh/id_ed25519.pub
 
-
+### Add this ssh public key to Codifinary repo/account
 
 # Docker install 
 ###  Add Docker's official GPG key:
