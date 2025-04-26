@@ -49,3 +49,7 @@
 
 ### Start the docker-compose
     docker-compose up -d
+
+### if clickhouse username is not connecting
+    docker exec -it <container-name> bash
+    rm /etc/clickhouse-server/users.d/default-users.xml
