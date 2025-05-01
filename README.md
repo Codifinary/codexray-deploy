@@ -47,6 +47,9 @@
 ### Setup docker login for Github 
     docker login ghcr.io -u <access username or email> -p <PAT>
 
+### Git Clone Deploy Folder
+    git clone <codexay deploy folder on https/ssh>
+
 ### Start the docker-compose
     docker-compose up -d
 
