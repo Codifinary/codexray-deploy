@@ -11,7 +11,7 @@ volumes:
 services:
   codexray:
     restart: always
-    image: ghcr.io/codifinary/codexray-dev:latest
+    image: ghcr.io/codifinary/codexray:latest
     pull_policy: always
     volumes:
       - codexray_data:/data
