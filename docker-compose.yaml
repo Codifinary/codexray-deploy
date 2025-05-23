@@ -41,20 +41,6 @@ services:
       - "--collector-endpoint=http://codexray:8080"
       - "--cgroupfs-root=/host/sys/fs/cgroup"
       - "--wal-dir=/data"
-
-  cluster-agent:
-    restart: always
-    image: ghcr.io/codifinary/codexray-cluster-agent:latest
-    pull_policy: always
-    volumes:
-      - cluster_agent_data:/data
-    command:
-      - "--codexray-url=http://codexray:8080"
-      - "--metrics-scrape-interval=15s"
-      - "--metrics-wal-dir=/data"
-    depends_on:
-      - codexray
-
   prometheus:
     restart: always
     image: prom/prometheus:v2.45.4
