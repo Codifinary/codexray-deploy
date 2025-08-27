@@ -1,84 +1,19 @@
-version: "3.8"
-
-volumes:
-  prometheus_data: {}
-  clickhouse_data: {}
-  clickhouse_logs: {}
-  codexray_data: {}
-  node_agent_data: {}
-  cluster_agent_data: {}
+version: '3.8'
 
 services:
-  codexray:
-    restart: always
-    image: ghcr.io/codifinary/codexray:latest
-    pull_policy: always
-    volumes:
-      - codexray_data:/data
+  skywalking-transformer:
+    image: ghcr.io/codifinary/skywalking-transformer:latest
+    container_name: skywalking-transformer
     ports:
-      - 8080:8080
-    command:
-      - "--data-dir=/data"
-      - "--bootstrap-prometheus-url=http://prometheus:9090"
-      - "--bootstrap-refresh-interval=15s"
-      - "--bootstrap-clickhouse-address=clickhouse:9000"
-    depends_on:
-      - clickhouse
-      - prometheus
-
-  node-agent:
-    restart: always
-    image: ghcr.io/codifinary/codexray-node-agent:latest
-    pull_policy: always
-    privileged: true
-    pid: "host"
-    volumes:
-      - /sys/kernel/tracing:/sys/kernel/tracing
-      - /sys/kernel/debug:/sys/kernel/debug
-      - /sys/fs/cgroup:/host/sys/fs/cgroup
-      - node_agent_data:/data
-    command:
-      - "--collector-endpoint=http://codexray:8080"
-      - "--cgroupfs-root=/host/sys/fs/cgroup"
-      - "--wal-dir=/data"
-
-  cluster-agent:
-    restart: always
-    image: ghcr.io/codifinary/codexray-cluster-agent
-    pull_policy: always
-    volumes:
-      - cluster_agent_data:/data
-    command:
-      - "--codexray-url=http://codexray:8080"
-      - "--metrics-scrape-interval=15s"
-      - "--metrics-wal-dir=/data"
-    depends_on:
-      - codexray
-
-  prometheus:
-    restart: always
-    image: prom/prometheus:v2.45.4
-    volumes:
-      - prometheus_data:/prometheus
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
-      - "--web.console.templates=/usr/share/prometheus/consoles"
-      - "--web.enable-lifecycle"
-      - "--web.enable-remote-write-receiver"
-    ports:
-      - "127.0.0.1:9090:9090"
-
-  clickhouse:
-    restart: always
-    image: clickhouse/clickhouse-server:24.3
-    volumes:
-      - clickhouse_data:/var/lib/clickhouse
-      - clickhouse_logs:/var/log/clickhouse-server
-    ports:
-      - "127.0.0.1:9000:9000"
-    ulimits:
-      nofile:
-        soft: 262144
-        hard: 262144
+      - "8081:8081"
+    environment:
+      - CODEXRAY_COLLECTOR_URL=http://${BASE_URL}/v1/traces
+      - CODEXRAY_RECEIVER_PORT=8081
+      - CODEXRAY_WORKERS=8
+      - CODEXRAY_QUEUE_SIZE=100000
+      - CODEXRAY_BATCH_SIZE=500
+      - CODEXRAY_BATCH_FLUSH_MS=200
+      - CODEXRAY_HTTP_TIMEOUT_MS=10000
+      - CODEXRAY_SHUTDOWN_TIMEOUT_MS=15000
+      - CODEXRAY_QUEUE_DROP_ON_FULL=false
+    restart: unless-stopped
