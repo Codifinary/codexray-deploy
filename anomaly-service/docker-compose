@@ -1,0 +1,143 @@
+version: "3.8"
+
+volumes:
+  redis_data: {}
+
+services:
+  anomalies-service:
+    image: ghcr.io/codifinary/codexray-anomaly-service:latest
+    container_name: anomalies-service
+    ports:
+      - "8082:8082"
+      - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - TZ=UTC
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_PASSWORD=MHcuRwZ2xpMYhvpoQ7nRzys3WoVLie8hB1DJI5avGH0=
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAFKA_TOPIC=codexray-metrics
+      - KAFKA_GROUP_ID=codexray-consumer
+      - CLICKHOUSE_HOST=host.docker.internal
+      - CLICKHOUSE_PORT=8043
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=vizares
+      - CLICKHOUSE_DATABASE=default
+      - LOG_LEVEL=ERROR  
+      - INITIAL_WINDOW_DAYS=14  
+      - RRCF_BATCH_SIZE=25  
+      - RRCF_PROCESSING_INTERVAL_SECONDS=20  
+      - RRCF_CONTINUOUS_MODE=true
+      - RRCF_AGGREGATION_INTERVAL_MINUTES=5
+      - RRCF_BASE_WORKERS=6  
+      - RRCF_MAX_WORKERS=8  
+      - RRCF_MIN_WORKERS=6  
+      - RRCF_TREE_COUNT=50  
+      - RRCF_WINDOW_SIZE=100  
+      - RRCF_ANOMALY_THRESHOLD=0.7  
+      - RRCF_SHINGLE_SIZE=3  
+      - RRCF_MIN_DATA_POINTS=3  
+      - RRCF_PROCESSING_TIMEOUT=20  
+      - RRCF_CONFIDENCE_THRESHOLD=0.85  
+      - RRCF_MAX_CONSECUTIVE_FAILURES=3  
+      # ClickHouse Configuration 
+      - CLICKHOUSE_BATCH_SIZE=200  
+      - CLICKHOUSE_BATCH_TIMEOUT=0.5  
+      - CLICKHOUSE_DEDUP_WINDOW=3600
+      # Redis Configuration
+      - REDIS_RETENTION_HOURS=168
+      - REDIS_MAX_CONNECTIONS=100
+      # Forest Cache Configuration
+      - MODEL_CACHE_SIZE=20  
+    depends_on:
+      kafka:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - anomaly-service-network
+
+  redis:
+    image: redislabs/redistimeseries:latest
+    container_name: redis
+    command: sh -c "redis-server --appendonly yes --requirepass MHcuRwZ2xpMYhvpoQ7nRzys3WoVLie8hB1DJI5avGH0= --loadmodule /usr/lib/redis/modules/redistimeseries.so"
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - anomaly-service-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "MHcuRwZ2xpMYhvpoQ7nRzys3WoVLie8hB1DJI5avGH0=", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    ports:
+      - "29092:29092"
+      - "9093:9093"
+    depends_on:
+      zookeeper:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - anomaly-service-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
+      - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
+      - KAFKA_CLUSTERS_0_READONLY=false
+    ports:
+      - "8083:8080"
+    depends_on:
+      kafka:
+        condition: service_started
+      zookeeper:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - anomaly-service-network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "22181:2181"
+    restart: unless-stopped
+    networks:
+      - anomaly-service-network
+
+networks:
+  anomaly-service-network:
+    driver: bridge

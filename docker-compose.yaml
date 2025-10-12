@@ -1,4 +1,6 @@
-version: "3.8"
+networks:
+  codexray-network:
+    driver: bridge
 
 volumes:
   prometheus_data: {}
@@ -7,6 +9,7 @@ volumes:
   codexray_data: {}
   node_agent_data: {}
   cluster_agent_data: {}
+  postgres_data: {}
 
 services:
   codexray:
@@ -19,12 +22,16 @@ services:
       - 8080:8080
     command:
       - "--data-dir=/data"
+      - "--pg-connection-string=postgres://codexray:codexray123@postgres:5432/codexray?sslmode=disable"
       - "--bootstrap-prometheus-url=http://prometheus:9090"
       - "--bootstrap-refresh-interval=15s"
       - "--bootstrap-clickhouse-address=clickhouse:9000"
     depends_on:
       - clickhouse
       - prometheus
+      - postgres
+    networks:
+      - codexray-network
 
   node-agent:
     restart: always
@@ -41,6 +48,9 @@ services:
       - "--collector-endpoint=http://codexray:8080"
       - "--cgroupfs-root=/host/sys/fs/cgroup"
       - "--wal-dir=/data"
+    networks:
+      - codexray-network
+
   prometheus:
     image: prom/prometheus:v3.4.0
     restart: always
@@ -58,11 +68,12 @@ services:
       - "--web.enable-otlp-receiver"
     ports:
       - "9090:9090"
-
+    networks:
+      - codexray-network
 
   clickhouse:
     restart: always
-    image: clickhouse/clickhouse-server:24.3
+    image: clickhouse/clickhouse-server:latest
     environment:
       - CLICKHOUSE_USER=default
       - CLICKHOUSE_PASSWORD=vizares
@@ -71,8 +82,29 @@ services:
       - clickhouse_data:/var/lib/clickhouse
       - clickhouse_logs:/var/log/clickhouse-server
     ports:
-      - 8043:9000
+      - 8043:9000    
     ulimits:
       nofile:
         soft: 262144
         hard: 262144
+    networks:
+      - codexray-network
+
+  postgres:
+    restart: always
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=codexray
+      - POSTGRES_USER=codexray
+      - POSTGRES_PASSWORD=codexray123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - 8004:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codexray -d codexray"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - codexray-network

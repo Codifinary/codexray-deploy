@@ -56,8 +56,11 @@
 ### if clickhouse username is not connecting
     docker exec -it <container-name> bash
     rm /etc/clickhouse-server/users.d/default-users.xml
+
+### Add prometheus.yml file nano /etc/prometheus/prometheus.yml and add the below config
 ### prometheus config
-   global:
+```yaml
+global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
@@ -91,3 +94,4 @@ scrape_configs:
   - job_name: "prometheus"
     static_configs:
       - targets: ["localhost:9090"]
+```

@@ -1,0 +1,69 @@
+services:
+  # 1. Auth Service
+  auth-service:
+    image: ghcr.io/codifinary/codexray-auth-service:latest
+    container_name: auth-service
+    ports:
+      - "8008:1338"
+    environment:
+      - LOG_LEVEL=info
+      - PORT=1338
+      - ENVIRONMENT=qa
+      - DATABASE_URL=postgres://codexray:codexray123@host.docker.internal:8004/codexray?sslmode=disable
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - api-security-network
+    restart: unless-stopped
+
+  # 2. API Observability Service
+  api-observability:
+    image: ghcr.io/codifinary/api-observability:latest
+    container_name: api-observability
+    ports:
+      - "8009:1337"
+    environment:
+      - LOG_LEVEL=info
+      - PORT=1337
+      - ENVIRONMENT=qa
+      - ENABLE_PPROF=false
+      - GOOSE_DRIVER=clickhouse
+      - GOOSE_DBSTRING=clickhouse://default:vizares@host.docker.internal:8043/api_observability
+      - GOOSE_MIGRATION_DIR=./cmd/api/migrations
+      - CLICKHOUSE_ADDR=host.docker.internal:8043
+      - CLICKHOUSE_DATABASE=api_observability
+      - CLICKHOUSE_USERNAME=default
+      - CLICKHOUSE_PASSWORD=vizares
+      - CLICKHOUSE_DIAL_TIMEOUT=10
+      - CLICKHOUSE_MAX_OPEN_CONNS=25
+      - CLICKHOUSE_MAX_IDLE_CONNS=25
+      - CLICKHOUSE_CONN_MAX_LIFETIME=300
+      - MAX_UPLOAD_FILE_SIZE=10485760
+      - POSTMAN_BASE_URL=https://api.getpostman.com
+      - JWT_SECRET=479456849df2949e6dd4322f5d1d1e9e
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - api-security-network
+    restart: unless-stopped
+
+  # 3. Frontend
+  frontend:
+    image: ghcr.io/codifinary/api-security-frontend:latest
+    container_name: frontend
+    ports:
+      - "8010:8080"
+    environment:
+      - VITE_AUTH_SERVICE_URL=http://labs.codexray.io:8008
+      - VITE_BACKEND_API_URL=http://labs.codexray.io:8009
+    depends_on:
+      - api-observability
+      - auth-service
+    networks:
+      - api-security-network
+    restart: unless-stopped
+
+networks:
+  api-security-network:
+    driver: bridge
