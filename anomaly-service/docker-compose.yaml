@@ -105,6 +105,7 @@ services:
     restart: unless-stopped
     networks:
       - anomaly-service-network
+      - codexray-network
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -139,6 +140,7 @@ services:
 
 networks:
   anomaly-service-network:
+    name: anomaly-service-network
     driver: bridge
   codexray-network:
     external: true

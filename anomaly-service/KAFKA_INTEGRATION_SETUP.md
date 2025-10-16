@@ -67,17 +67,6 @@ curl -X PUT http://localhost:8080/api/project/<PROJECT_ID>/integrations/kafka \
 - `<PROJECT_ID>` with your actual project ID
 - `<YOUR_SESSION_COOKIE>` with the cookie value you copied
 
-**Example:**
-```bash
-curl -X PUT http://localhost:8080/api/project/f1gr424o/integrations/kafka \
-  -H "Content-Type: application/json" \
-  -H "Cookie: codexray_session=eyJpZCI6MX0=.oOycxgOplsKenRdpFw81w88x4HdSlXW36l_vvo99YJI=" \
-  -d '{
-    "brokers": ["kafka:29092"],
-    "global": false,
-    "metrics_topic": "codexray-metrics"
-  }'
-```
 
 ### Step 5: Verify the Connection
 
