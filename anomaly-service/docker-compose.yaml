@@ -19,8 +19,8 @@ services:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - KAFKA_TOPIC=codexray-metrics
       - KAFKA_GROUP_ID=codexray-consumer
-      - CLICKHOUSE_HOST=host.docker.internal
-      - CLICKHOUSE_PORT=8043
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=9000
       - CLICKHOUSE_USER=default
       - CLICKHOUSE_PASSWORD=vizares
       - CLICKHOUSE_DATABASE=default
@@ -64,6 +64,7 @@ services:
       start_period: 60s
     networks:
       - anomaly-service-network
+      - codexray-network
 
   redis:
     image: redislabs/redistimeseries:latest
@@ -139,3 +140,6 @@ services:
 networks:
   anomaly-service-network:
     driver: bridge
+  codexray-network:
+    external: true
+    name: codexray-network

@@ -14,7 +14,7 @@ This guide explains how to connect CodeXray to Kafka when deploying both the mai
 
 ```bash
 cd /path/to/codexray-deploy
-sudo docker-compose up -d
+sudo docker compose up -d
 ```
 
 This will start:
@@ -28,7 +28,7 @@ This will start:
 
 ```bash
 cd /path/to/codexray-deploy/anomaly-service
-sudo docker-compose -f docker-compose up -d
+sudo docker compose up -d
 ```
 
 This will start:
@@ -38,15 +38,9 @@ This will start:
 - Zookeeper (port 22181)
 - Redis (port 6379)
 
-### Step 3: Connect CodeXray to Anomaly Service Network
+**Note**: The anomaly service is now automatically connected to the `codexray-network`, allowing direct communication with ClickHouse and other CodeXray services. No manual network connection is needed!
 
-The CodeXray and Anomaly Service containers run on separate Docker networks by default. To allow CodeXray to communicate with Kafka, connect the CodeXray container to the anomaly service network:
-
-```bash
-sudo docker network connect anomaly-service_anomaly-service-network codexray-deploy_codexray_1
-```
-
-### Step 4: Get Your Session Cookie and Project ID
+### Step 3: Get Your Session Cookie and Project ID
 
 1. **Login to CodeXray UI**: Open http://localhost:8080 (or your VM's IP:8080)
 2. **Open Browser DevTools**: Press F12
@@ -54,7 +48,7 @@ sudo docker network connect anomaly-service_anomaly-service-network codexray-dep
 4. **Copy the `codexray_session` cookie value**
 5. **Get your Project ID**: Navigate to your project and copy the ID from the URL (e.g., `f1gr424o`)
 
-### Step 5: Configure Kafka Integration
+### Step 4: Configure Kafka Integration
 
 Send a PUT request to configure the Kafka integration:
 
@@ -85,12 +79,12 @@ curl -X PUT http://localhost:8080/api/project/f1gr424o/integrations/kafka \
   }'
 ```
 
-### Step 6: Verify the Connection
+### Step 5: Verify the Connection
 
-#### 6.1 Check the API Response
+#### 5.1 Check the API Response
 The curl command should return `HTTP/1.1 200 OK`
 
-#### 6.2 Verify Configuration
+#### 5.2 Verify Configuration
 ```bash
 curl -X GET http://localhost:8080/api/project/<PROJECT_ID>/integrations/kafka \
   -H "Cookie: codexray_session=<YOUR_SESSION_COOKIE>"
@@ -108,7 +102,7 @@ Expected response:
 }
 ```
 
-#### 6.3 Check Kafka Topic
+#### 5.3 Check Kafka Topic
 Verify the `codexray-metrics` topic exists:
 ```bash
 sudo docker exec kafka kafka-topics --bootstrap-server localhost:29092 --list
@@ -120,9 +114,9 @@ __consumer_offsets
 codexray-metrics
 ```
 
-#### 6.4 Check CodeXray Logs
+#### 5.4 Check CodeXray Logs
 ```bash
-sudo docker logs codexray-deploy_codexray_1 --tail 20 | grep -i kafka
+sudo docker logs codexray-deploy-codexray-1 --tail 20 | grep -i kafka
 ```
 
 Expected output:
@@ -130,7 +124,7 @@ Expected output:
 I... successfully connected to kafka brokers kafka:29092, found 2 topics
 ```
 
-#### 6.5 Monitor Kafka UI
+#### 5.5 Monitor Kafka UI
 Open http://localhost:8083 (or your VM's IP:8083) to view:
 - Kafka brokers status
 - Topics and their messages
@@ -139,9 +133,9 @@ Open http://localhost:8083 (or your VM's IP:8083) to view:
 ## Important Notes
 
 ### Network Configuration
-- **CodeXray Network**: `codexray-network`
-- **Anomaly Service Network**: `anomaly-service-network`
-- **Bridge Connection**: Required via Step 3 to allow cross-network communication
+- **CodeXray Network**: `codexray-network` (shared between main and anomaly services)
+- **Anomaly Service Network**: `anomaly-service-network` (internal for Kafka, Redis, Zookeeper)
+- **Automatic Connection**: The anomaly service is automatically connected to both networks via docker-compose configuration
 
 ### Broker Addresses
 - **Inside Docker Network**: Use `kafka:29092` (container hostname)
@@ -150,20 +144,21 @@ Open http://localhost:8083 (or your VM's IP:8083) to view:
 
 ### ClickHouse Connection
 The Anomaly Service connects to ClickHouse using:
-- **Host**: `host.docker.internal` (configured in docker-compose)
-- **Port**: `8043`
+- **Host**: `clickhouse` (internal Docker network hostname)
+- **Port**: `9000` (internal Docker port, not the exposed 8043)
 - **User**: `default`
 - **Password**: `vizares`
 
-This is already configured in the anomaly-service docker-compose file.
+This is already configured in the anomaly-service docker-compose file and uses direct container-to-container communication.
 
 ## Troubleshooting
 
 ### Connection Refused Error
 If you see `connection refused` errors:
-1. Ensure Step 3 (network connection) was completed
-2. Verify Kafka is running: `sudo docker ps | grep kafka`
-3. Use `kafka:29092` not `localhost:9093` in the integration config
+1. Verify all containers are running: `sudo docker ps`
+2. Check that Kafka is healthy: `sudo docker ps | grep kafka`
+3. Ensure you're using `kafka:29092` (not `localhost:9093`) in the integration config
+4. Restart both stacks if needed (main codexray first, then anomaly service)
 
 ### Topic Not Created
 If the `codexray-metrics` topic doesn't exist:
@@ -192,33 +187,51 @@ If you get authentication errors:
 3. Get a fresh cookie from DevTools
 4. Retry the curl command
 
-## Persistence After Restart
+## Restarting Services
 
-The network connection created in Step 3 is **not persistent** across Docker restarts. 
+The network connections are now **persistent** and configured in the docker-compose files, so no manual reconnection is needed after restarts.
 
-### Option 1: Reconnect After Restart
-After restarting Docker or the containers, run Step 3 again:
+### Simple Restart
 ```bash
-sudo docker network connect anomaly-service_anomaly-service-network codexray-deploy_codexray_1
+# Restart main CodeXray services
+cd /path/to/codexray-deploy
+sudo docker compose restart
+
+# Restart anomaly services
+cd /path/to/codexray-deploy/anomaly-service
+sudo docker compose restart
 ```
 
-### Option 2: Automate with a Script
-Create a startup script:
+### Full Restart (recommended for config changes)
+```bash
+# Stop and restart main CodeXray services
+cd /path/to/codexray-deploy
+sudo docker compose down
+sudo docker compose up -d
+
+# Stop and restart anomaly services
+cd /path/to/codexray-deploy/anomaly-service
+sudo docker compose down
+sudo docker compose up -d
+```
+
+### Startup Script (Optional)
+If you want a single script to start everything:
 ```bash
 #!/bin/bash
+# Start main CodeXray stack
 cd /path/to/codexray-deploy
-sudo docker-compose up -d
+sudo docker compose up -d
 
+# Wait for services to be ready
+echo "Waiting for CodeXray services to be ready..."
+sleep 15
+
+# Start anomaly service stack
 cd /path/to/codexray-deploy/anomaly-service
-sudo docker-compose -f docker-compose up -d
+sudo docker compose up -d
 
-# Wait for containers to be ready
-sleep 10
-
-# Connect networks
-sudo docker network connect anomaly-service_anomaly-service-network codexray-deploy_codexray_1
-
-echo "All services started and connected!"
+echo "All services started!"
 ```
 
 ## Service URLs
@@ -240,15 +253,15 @@ To stop all services:
 ```bash
 # Stop main CodeXray services
 cd /path/to/codexray-deploy
-sudo docker-compose down
+sudo docker compose down
 
 # Stop anomaly services
 cd /path/to/codexray-deploy/anomaly-service
-sudo docker-compose -f docker-compose down
+sudo docker compose down
 ```
 
 To stop and remove all data (volumes):
 ```bash
-sudo docker-compose down -v
+sudo docker compose down -v
 ```
 

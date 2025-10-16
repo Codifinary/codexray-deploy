@@ -1,5 +1,6 @@
 networks:
   codexray-network:
+    name: codexray-network
     driver: bridge
 
 volumes:
